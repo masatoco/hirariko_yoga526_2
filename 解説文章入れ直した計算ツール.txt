@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ヨガ数秘自動計算診断ツール ひらりこ</title>
+    <style>
+        :root { --gold: #d4af37; --brown: #8b4513; --pink: #ff69b4; --orange: #ff8c00; --cream: #fffdd0; --bg: #fdfaf5; --black: #000000; }
+        body { font-family: sans-serif; background-color: var(--bg); color: #333; margin: 0; padding: 10px; line-height: 1.5; }
+        .container { max-width: 650px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 20px; border: 1px solid var(--gold); }
+        
+        /* タイトルをピンク色に変更 ＆ テキスト修正 */
+        h1 { text-align: center; color: var(--pink); font-size: 1.2em; margin-bottom: 20px; font-weight: bold; }
+        
+        /* 入力エリア */
+        .input-area { text-align: center; margin-bottom: 30px; padding: 15px; background: #f9f6f0; border-radius: 10px; border: 1px solid #eee; }
+        select { padding: 10px; font-size: 1.1em; border-radius: 5px; border: 1px solid #ccc; margin: 5px; }
+        
+        /* 「診断する」ボタンを濃いめオレンジに変更 */
+        button { background: var(--orange); color: #fff; border: none; padding: 15px; font-size: 1.2em; border-radius: 5px; width: 100%; max-width: 280px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+
+        /* チャート配置：スマホでもiPadでも絶対に横並び（右横に円）で固定 */
+        .chart-container { display: flex; align-items: center; justify-content: center; margin-bottom: 40px; gap: 15px; flex-wrap: nowrap; }
+        .chart-grid { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; max-width: 330px; border-left: 1.5px solid #666; border-top: 1.5px solid #666; }
+        
+        /* すべてのノードを統一 */
+        .node { border-right: 1.5px solid #666; border-bottom: 1.5px solid #666; background: #fff; height: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .node.empty { border-right: 1.5px solid #666; border-bottom: 1.5px solid #666; background: transparent; }
+        .purpose-node { width: 110px; height: 110px; border: 2.5px solid #666; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: #fff; min-width: 110px; }
+        
+        .node span, .purpose-node span { display: block; font-size: 0.85em; color: var(--black); font-weight: bold; }
+        .node small, .purpose-node small { display: block; font-size: 0.75em; color: var(--black); font-weight: bold; }
+        .node strong, .purpose-node strong { font-size: 2.2em; color: var(--brown); margin-top: 2px; }
+
+        .result-section { display: none; border-top: 2px solid var(--gold); padding-top: 30px; }
+        .reading-group { margin-bottom: 45px; }
+        .reading-group h2 { font-size: 1.3em; color: var(--black); border-bottom: 2.5px solid var(--gold); padding-bottom: 8px; font-weight: bold; margin-bottom: 15px; }
+        details { margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fafafa; }
+        summary { padding: 12px 15px; cursor: pointer; font-size: 1em; font-weight: bold; color: #333; outline: none; }
+        .advice-box { padding: 25px; background: #fff; border-left: 6px solid var(--brown); font-size: 1.1em; line-height: 1.9; white-space: pre-wrap; box-shadow: 0 4px 12px rgba(0,0,0,0.06); color: #222; }
+
+        /* その他のポジションの背景色をクリーム色に変更 */
+        .other-box { background: var(--cream); border: 1px dashed var(--gold); border-radius: 12px; padding: 20px; margin-top: 30px; }
+        
+        /* その他のポジション内の枠を統一 */
+        .basic-item { font-size: 1em; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 10px; color: var(--black); line-height: 1.6; }
+        .basic-item strong { color: var(--brown); font-size: 1.2em; }
+
+        /* スマートフォン向けのレスポンシブ対応（※右横並びを崩す記述は完全に消去しました） */
+        @media (max-width: 480px) {
+            body { padding: 5px; }
+            .container { padding: 12px; border-radius: 12px; }
+            .chart-grid { max-width: 225px; }
+            .node { height: 75px; }
+            .purpose-node { width: 75px; height: 75px; min-width: 75px; }
+            .node strong, .purpose-node strong { font-size: 1.6em; }
+            .node span, .purpose-node span { font-size: 0.65em; }
+            .node small, .purpose-node small { font-size: 0.55em; }
+            button { padding: 12px; font-size: 1.1em; }
+            select { padding: 8px; font-size: 1em; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>ヨガ数秘自動計算診断ツール ひらりこ</h1>
+    <div class="input-area">
+        <p style="font-weight: bold; margin-bottom: 15px;">生年月日を選択してください</p>
+        <select id="year"></select>年 <select id="month"></select>月 <select id="day"></select>日
+        <button onclick="diagnose()">診断する</button>
+    </div>
+
+    <div id="resultArea" class="result-section">
+        <div class="chart-container">
+            <div class="chart-grid">
+                <div class="node"><span>プロジェクション</span><small>（第一印象）</small><strong><span id="pos2"></span></strong></div>
+                <div class="node"><span>アイデンティティ</span><small>（素の自分）</small><strong><span id="pos6"></span></strong></div>
+                <div class="node"><span>ギフト</span><small>（強み・才能）</small><strong><span id="pos3"></span></strong></div>
+                <div class="node"><span>インテンション</span><small>（内側にある自分）</small><strong><span id="pos1"></span></strong></div>
+                <div class="node"><span>レッスン</span><small>（学びや課題）</small><strong><span id="pos8"></span></strong></div>
+                <div class="node"><span>パスト</span><small>（過去からの強み）</small><strong><span id="pos4"></span></strong></div>
+                <div class="node empty"></div>
+                <div class="node"><span>ファンデーション</span><small>（困った時の支え）</small><strong><span id="pos7"></span></strong></div>
+                <div class="node"><span>アセット</span><small>（第3の強み）</small><strong><span id="pos5"></span></strong></div>
+            </div>
+            <div class="purpose-node"><span>パーパス</span><small>（目的・役割）</small><strong><span id="pos9"></span></strong></div>
+        </div>
+
+        <div class="reading-group">
+            <h2 id="headIden"></h2>
+            <details><summary>アイデンティティナンバーとは？</summary><div style="padding:15px; font-size:0.95em;">あなたの「ありのままの自分」「無理のない素の自分」を表す数字です。</div></details>
+            <div id="textIden" class="advice-box"></div>
+        </div>
+        <div class="reading-group">
+            <h2 id="headLess"></h2>
+            <details><summary>レッスンナンバーとは？</summary><div style="padding:15px; font-size:0.95em;">この人生で向き合うべき「課題」を表す数字です。</div></details>
+            <div id="textLess" class="advice-box"></div>
+        </div>
+        <div class="reading-group">
+            <h2 id="headFound"></h2>
+            <details><summary>ファンデーションナンバーとは？</summary><div style="padding:15px; font-size:0.95em;">あなたを「支え」「助け」になる数字です。</div></details>
+            <div id="textFound" class="advice-box"></div>
+        </div>
+
+        <div class="other-box">
+            <h3 style="text-align:center; color:var(--brown); margin-top:0;">その他のポジション</h3>
+            <div id="otherList"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const yS=document.getElementById('year'), mS=document.getElementById('month'), dS=document.getElementById('day');
+for(let i=1940; i<=2026; i++){ let o=new Option(i,i); if(i===1980)o.selected=true; yS.add(o); }
+for(let i=1; i<=12; i++) mS.add(new Option(i,i));
+for(let i=1; i<=31; i++) dS.add(new Option(i,i));
+
+// 計算ルール：11を超える場合は11以下になるまで桁を足し算する
+function rN(n){ while(n>11) n=Math.floor(n/10)+(n%10); return n; }
+
+// ひらりこ流・読み解き全データ
+const iTexts = { 
+    1: "あなたは、何かを目指して一直線に進んでいきたい気持ちを、自分の中に強く持っている人ね。勇気を持って殻を突き破る「強い意志」がある証拠よ。自分を信じて進みなさい。",
+    2: "あなたは、相手の状況を察して慎重に動けるサポート上手な人ね。ネガティブマインドを活かして危険を回避できるけれど、相手を優先しすぎず自分を保つことも大切よ。", 
+    3: "あなたは好奇心旺盛で、どんな状況でもプラスを見つけ出せる人。ルールに縛られるのは苦手だけど、自分の「楽しい！」を信じて動くことで輝きが広がるわよ。",
+    4: "あなたは物事を冷静に分析できる安定感のある人ね。真面目すぎて「正しい・正しくない」の枠組みで考えすぎるあまり、ぐるぐる思考になりがち。頭を空にする時間を作りなさい。",
+    5: "あなたは考えるよりまず身体を動かすタイプの人。自由を愛し、体験を通して学ぶ「先生」のような役割を持っているわ。動きすぎに注意して、身体を労わる時間を大切にね。",
+    6: "あなたは心を大切にする人。心（愛）がないと納得できない性質ね。誰かの機嫌を伺う前に、自分の心にだけは嘘をつかないという覚擁を持ちなさい。そこがあなたの居場所よ。", 
+    7: "あなたは相手との距離を保ちながら伝えるのが大切な人。自分の内側を丁寧に観察（内省）して、自分をクリアに保ちなさい。言葉の力で人を引き上げていく影響力があるわ。",
+    8: "あなたは目標に向かって全力を注ぎ込むパワフルな人。責任感が強く負けず嫌いね。突き進む時こそ意識的に呼吸を整えること。それがあなたの力を最大限に活かすコツよ。",
+    9: "あなたは知精度奇心が強く、一つのことを極めたい人。整理して説明するのも上手ね。あれこれ手を広げず、これと決めた一つのことで専門家を目指すと力が引き出されるわ。",
+    10: "あなたは揺るぎない「信念」を持ち、圧倒的な存在感でリードする人。一時の気分で動くことはないわ。「全か無か」の強さを持っているから、自信を持って進みなさい。",
+    11: "あなたは理屈じゃないところで繋がりを感じ取るのが得意な人。感覚が鋭い分、現実から浮きやすいけれど、その「なんとなく」を「見える形」に変えていく努力をしなさい。"
+};
+const lTexts = { 
+    1: "人生では「自分一人で決断しなきゃいけない場面」が何度もやってきそう。逃げずに、自分の足でしっかりと立つ「自立」を学ぶことが、あなたらしく楽に生きるための鍵よ。",
+    2: "繋がりに執着しすぎて自分をすり減らしていませんか？一人で完璧に存在している事実に気づき、誰かに委ねすぎない「一人の強さ」を学ぶことが、あなたの人生を自由にするわ。",
+    3: "人に喜んでもらおうとして「イエス」と言いすぎていませんか？自分を置き去りにせず、嫌なことは「ノー」とはっきり言う練習をすることが、本当の意味で人生を楽しむ学びよ。",
+    4: "完璧な正解を求めすぎて、正論で自分を追い込んでいないかしら。頭の中が考え事でいっぱいになったら立ち止まりなさい。相手を俯瞰して受け入れることが安定への道よ。",
+    5: "自由を求めるあまり規律を失い、生活がコントロール不能になりがちに。何事においても少しずつ自分のリズムを作り、自分を律する強さを持つことが、一生自由に動くための学びよ。",
+    6: "感情の波に振り回されたり、誰かの心配ばかりして自分を追い込んだりしがち。自分の心を「がんじがらめ」にせず自由に解き放ち、自身の心の声に正直に従うことを学びなさい。",
+    7: "言いたいことが言えない、あるいは真意が伝わりにくいと感じて悩むのがパターンのようね。常に自分の「内側」を観ること。本音を観察できれば、コミュニケーションは円滑になるわ。",
+    8: "何でも一人で背負い込み、重圧で動けなくなっていませんか？エネルギーを自分一人で止めずに、周囲と循環させること。豊かさを受け入れる余裕を持つことが、力強く回すコツよ。",
+    9: "別れや離散をいつまでも引きずって悩むことが出てきそう。執着せず、次への準備として一旦完了させてしておくこと。手放す勇気を持つことが、あなたの人生を完成させる学びよ。",
+    10: "リーダーの役割を振られても「自分なんて」と自信をなくしがち。自分の中に眠る勇気や強い意志に気づき、退かずに自信をもって進みなさい。それがあなたの輝くための学びを。",
+    11: "不都合な現実に振り回されて、心が折れそうになってはいない？目に見える現象だけに心を縛られず、大きな流れに導かれていることを信頼しなさい。受け入れた時に幸運が届くわ。"
+};
+const fTexts = { 
+    2: "行き詰まった時は信頼できる人に一対一でアドバイスをもらいなさい。マンツーマンで向き合える場所での相談こそが、あなたを支える最強の盾になり、足場を固めてくれるわ。",
+    3: "行き詰まった時は、一旦すべての責任感をストップさせなさい。自分が心から笑えて、ただ楽しいと思えることに没頭すること。それが、停滞した状況を打破する一番の近道よ。",
+    4: "迷った時は、まず淡々と「今できること」を書いて整理し、自分なりのルールを再構築すること。日頃からルーティンを整えておくことが、いざという時にあなたを支える鍵になるわ。",
+    5: "不自由さを感じた時は、徐々に身体を動かすこと。場所を変え、五感に刺激を与えることが突破口になるわ。自分を律する強さを持つことが、あなたを身軽に動かすエンジンよ。",
+    6: "感情の波に飲み込まれた時は、安心できる場所（家）があなたの支え。自分の感情を冷静に確認する習慣を持つことで、心が傷つかずに済むための揺るぎない足場になっていくわ。",
+    7: "行き詰まった時ほど閉じこもらず、今の自分の状況を外へ「アナウンス」すること。自分の思いを言葉にして発信することで、必要な助けが引き寄せられ、道が開けるはずよ。",
+    8: "無力感に襲われた時こそ、縮こまらずに自分の強さを思い出しなさい。「攻めの姿勢」こそがあなたを支える柱よ。呼吸を整え、自分のエネルギーを常に循環させておくことが大切よ。",
+    9: "八方塞がりになった時は、余計なものを手放して、ひとつの事をマスターしなさい。日頃から手放す練習をしておくことが、いざという時にあなたを支える最強の武器になるわよ。",
+    10: "自分を小さく見積もらず、一切の妥協をやめなさい。アンタが本来持っている「光」を放つことが最大の支えになるわ。「自分が先頭に立てば道は開ける」という自信を持ちなさい。",
+    11: "自力で解決しようとせず、一度すべてを「大きな流れ」に委ねること。ふと感じた直感や、目に見えない存在との繋がりを信じることが、あなたを救う一番の解決策になるはずよ。"
+};
+
+// その他ポジション用マスターデータ
+const pTexts = {
+    1: "真っ近ぐにで素直。", 2: "寄り添ってくれる優しさ。", 3: "明るくて楽しい。", 4: "まじめ。",
+    5: "フレンドリーで活発。", 6: "穏やか・癒し。", 7: "クールっぽい。", 8: "責任感強そう。",
+    9: "さっぱりしてる。", 10: "リーダー的な存在感。", 11: "ふんわり柔らか。"
+};
+const itTexts = {
+    2: "相手優先したい", 3: "明るく元気・活発", 4: "論理的・几帳面", 5: "自由・人脈のひろさ",
+    6: "感情豊か・傷つく心", 7: "静かにいたい自分", 8: "男性ぽいところ", 9: "もの知り・賢者肌",
+    10: "特別感がある", 11: "うろたえない"
+};
+const gpaTexts = {
+    1: "チャレンジ力", 2: "サポート力", 3: "アイデア力", 4: "バランス力", 5: "行動力・身軽さ",
+    6: "愛・いたわり力", 7: "距離感力・発信力", 8: "パワー・目標達成力", 9: "完結力・区切る力",
+    10: "リーダーシップ力", 11: "鋭い勘・流れに任す力"
+};
+const ppTexts = {
+    2: "縁の下の力もち。他", 3: "楽しませる。他", 4: "安定・安心を与える。他", 5: "教える・政治関連他",
+    6: "世話する・居場所つくり他", 7: "伝達・探求他", 8: "ビジネス・循環他", 9: "知識を広げる他",
+    10: "圧倒的なリーダーシップ他", 11: "気づきを与える他"
+};
+
+function diagnose(){
+    const y=parseInt(yS.value), m=parseInt(mS.value), d=parseInt(dS.value);
+    
+    // 計算ロジック
+    const p8 = rN(m); // レッスン
+    const p6 = rN(d); // アイデンティティ
+    const p7 = rN(m + d); // ファンデーション
+    const p3 = rN(parseInt(y.toString().slice(-2))); // ギフト
+    const p4 = rN(y.toString().split('').reduce((a,b)=>parseInt(a)+parseInt(b),0)); // パスト
+    
+    const p5 = rN(p3 + p4); // アセット
+    const p2 = rN(p3 + p6); // プロジェクション
+    const p1 = rN(p4 + p8); // インテンション
+    const p9 = rN(y + m + d); // パーパス
+    
+    // チャートに数字を反映
+    const ids=['pos1','pos2','pos3','pos4','pos5','pos6','pos7','pos8','pos9'];
+    const vals=[p1,p2,p3,p4,p5,p6,p7,p8,p9];
+    vals.forEach((v, i) => { document.getElementById(ids[i]).innerText = v; });
+
+    // 主要3ナンバーの見出しと解説文を反映
+    document.getElementById('headIden').innerText = `アイデンティティ（素の自分） ${p6}`;
+    document.getElementById('headLess').innerText = `レッスン（学びや課題） ${p8}`;
+    document.getElementById('headFound').innerText = `ファンデーション（困った時の支え） ${p7}`;
+    
+    document.getElementById('textIden').innerText = iTexts[p6] || "自分らしく輝く性質を持っています。";
+    document.getElementById('textLess').innerText = lTexts[p8] || "人生の課題に向き合う学びがあります。";
+    document.getElementById('textFound').innerText = fTexts[p7] || "困った時は基本の質に立ち返りましょう。";
+
+    // その他のポジションのテキスト出し分け
+    const prTxt = pTexts[p2] || "";
+    const itTxt = itTexts[p1] || "";
+    const gfTxt = gpaTexts[p3] || "";
+    const psTxt = gpaTexts[p4] || "";
+    const asTxt = gpaTexts[p5] || "";
+    const ppTxtText = ppTexts[p9] || "";
+
+    // 通常の枠(basic-item)で一括出力
+    let html = "";
+    html += `<div class="basic-item"><span>プロジェクション（第一印象）</span> <strong>${p2}</strong>: ${prTxt}</div>`;
+    html += `<div class="basic-item"><span>インテンション（内側にある自分）</span> <strong>${p1}</strong>: ${itTxt}</div>`;
+    html += `<div class="basic-item"><span>ギフト（強み・才能）</span> <strong>${p3}</strong>: ${gfTxt}</div>`;
+    html += `<div class="basic-item"><span>パスト（過去からの強み）</span> <strong>${p4}</strong>: ${psTxt}</div>`;
+    html += `<div class="basic-item"><span>アセット（第3の強み）</span> <strong>${p5}</strong>: ${asTxt}</div>`;
+    html += `<div class="basic-item"><span>パーパス（目的・役割）</span> <strong>${p9}</strong>: ${ppTxtText}</div>`;
+    
+    document.getElementById('otherList').innerHTML = html;
+    document.getElementById('resultArea').style.display='block';
+}
+</script>
+</body>
+</html>
